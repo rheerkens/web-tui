@@ -1,7 +1,3 @@
 node_modules/
-public/app.js
-public/app.js.map
-public/app.css
-public/app.css.map
 .env
 npm-debug.log*

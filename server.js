@@ -67,7 +67,7 @@ app.delete('/api/sessions/:name', async (req, res, next) => {
 });
 app.use(express.static(path.join(root, 'public'), { extensions: ['html'] }));
 app.use((error, _req, res, _next) => {
-  console.error(error);
+  if (!error.status || error.status >= 500) console.error(error);
   res.status(error.status || 500).json({ error: error.message || 'Unexpected server error' });
 });
 
@@ -116,6 +116,14 @@ wss.on('connection', async (ws, request) => {
 
 if (process.env.NODE_ENV !== 'test') {
   server.listen(port, host, () => console.log(`Waypoint Terminal listening on http://${host}:${port}`));
+
+  const shutdown = () => {
+    wss.clients.forEach((client) => client.close(1001, 'Server shutting down'));
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(1), 5000).unref();
+  };
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
 }
 
 export { app, server };

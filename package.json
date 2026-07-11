@@ -1,14 +1,37 @@
 {
   "name": "waypoint-terminal",
   "version": "1.0.0",
-  "private": true,
+  "description": "A browser terminal for persistent AI coding-agent sessions backed by tmux.",
   "type": "module",
+  "license": "MIT",
+  "homepage": "https://github.com/rheerkens/web-tui#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rheerkens/web-tui.git"
+  },
+  "bugs": "https://github.com/rheerkens/web-tui/issues",
+  "bin": {
+    "waypoint": "bin/waypoint.js"
+  },
+  "files": [
+    "bin/",
+    "public/",
+    "src/",
+    "scripts/",
+    "server.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "esbuild src/app.js --bundle --minify --sourcemap --outfile=public/app.js",
     "dev": "npm run build && node --watch server.js",
     "start": "node server.js",
-    "test": "node --test test/server.test.js",
-    "test:e2e": "node test/e2e.mjs"
+    "test": "node --test test/*.test.js",
+    "test:e2e": "node test/e2e.mjs",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
