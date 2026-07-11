@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#111412">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Waypoint Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-mark">W</div><div><h1>Waypoint</h1><p>REMOTE TERMINAL</p></div></div>
+      <div class="sidebar-heading"><span>SESSIONS</span><span class="count" id="session-count">0</span></div>
+      <ul class="session-list" id="session-list"></ul>
+      <div class="sidebar-fill"></div>
+      <button class="new-session" id="new-session"><span>＋</span> New Claude session</button>
+      <div class="host-card"><span class="host-pulse"></span><div><strong>Host online</strong><small>Encrypted connection recommended</small></div></div>
+    </aside>
+    <button class="overlay" id="overlay" aria-label="Close menu" hidden></button>
+    <main class="workspace">
+      <header class="topbar">
+        <button class="icon-button menu-button" id="menu-button" aria-label="Open sessions">☰</button>
+        <div class="title-group"><span class="terminal-glyph">›_</span><div><strong id="current-session">No session selected</strong><small>CLAUDE CODE</small></div></div>
+        <div class="topbar-actions">
+          <div class="connection-status offline" id="connection-status"><span class="status-dot"></span><span>Disconnected</span></div>
+          <button class="icon-button danger" id="close-session" aria-label="End session" title="End session" disabled>×</button>
+        </div>
+      </header>
+      <section class="terminal-wrap">
+        <div class="window-bar"><div class="traffic-lights"><i></i><i></i><i></i></div><span>claude — interactive</span><span class="secure">◈ SECURE</span></div>
+        <div class="terminal-stage" id="terminal">
+          <div class="empty-state" id="empty-state">
+            <div class="empty-mark">›<span>_</span></div><h2>Your terminal, anywhere.</h2>
+            <p>Start a Claude Code session and pick up your work<br>from this device—or any other.</p>
+            <button onclick="document.querySelector('#new-session').click()">＋ Start a session</button>
+          </div>
+        </div>
+        <div class="mobile-keys">
+          <button data-key="escape">esc</button><button data-key="tab">tab</button><button data-key="ctrl-c">ctrl-c</button>
+          <button data-key="up">↑</button><button data-key="down">↓</button>
+          <button class="keyboard-button" id="keyboard-button">⌨ <span>Keyboard</span></button>
+          <textarea id="mobile-input" aria-label="Terminal keyboard input" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false"></textarea>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
