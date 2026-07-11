@@ -4,6 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createAuth } from '../src/auth.js';
 
 const root = path.resolve(import.meta.dirname, '..');
 const cli = path.join(root, 'bin', 'waypoint.js');
@@ -40,4 +41,15 @@ test('unknown commands fail with an actionable message', () => {
   const result = spawnSync(process.execPath, [cli, 'not-a-command'], { encoding: 'utf8' });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Run 'waypoint help'/);
+});
+
+test('auth prints a temporary URL and short code from the service state', () => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'waypoint-cli-auth-'));
+  const env = { XDG_CONFIG_HOME: path.join(temporary, 'config'), XDG_STATE_HOME: path.join(temporary, 'state') };
+  const authFile = path.join(env.XDG_STATE_HOME, 'waypoint-terminal', 'auth.json');
+  createAuth({ stateFile: authFile });
+  const output = run(['auth', '--url', 'https://waypoint.test'], env);
+  assert.match(output, /^URL:\s+https:\/\/waypoint\.test\/auth\/login\?token=/m);
+  assert.match(output, /^Code: [A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/m);
+  fs.rmSync(temporary, { recursive: true, force: true });
 });

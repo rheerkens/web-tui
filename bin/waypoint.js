@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { createAuth } from '../src/auth.js';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const serverFile = path.join(packageRoot, 'server.js');
@@ -20,6 +21,7 @@ const stateDir = process.env.XDG_STATE_HOME
 const configFile = path.join(configDir, 'config.json');
 const stateFile = path.join(stateDir, 'daemon.json');
 const logFile = path.join(stateDir, 'waypoint.log');
+const authStateFile = path.join(stateDir, 'auth.json');
 
 const HELP = `Waypoint Terminal — persistent AI-agent terminals in your browser
 
@@ -35,6 +37,7 @@ Service commands:
   logs [-f|--follow]    Read service logs
   install-service       Install and start a per-user system service
   uninstall-service     Stop and remove the per-user system service
+  auth                  Print a single-use five-minute login URL and code
 
 Configuration and diagnostics:
   config                Print the saved configuration
@@ -52,6 +55,7 @@ Connection options accepted where relevant:
   --port PORT            HTTP port (default: 4173)
   --command COMMAND      Command launched in each new session (default: claude)
   --tmux PATH            tmux executable (default: tmux)
+  --url URL              Public URL used by the auth command
   --json                 Machine-readable output where supported
   -h, --help             Show this help
   -v, --version          Show the package version
@@ -59,6 +63,7 @@ Connection options accepted where relevant:
 Examples:
   waypoint install-service --host 127.0.0.1 --port 4173
   waypoint status --json
+  waypoint auth
   waypoint session create refactor-auth
   waypoint logs --follow
 
@@ -126,7 +131,9 @@ function configEnvironment(config) {
     HOST: String(config.host),
     PORT: String(config.port),
     SESSION_COMMAND: String(config.command),
-    TMUX_BIN: String(config.tmux)
+    TMUX_BIN: String(config.tmux),
+    AUTH_STATE_FILE: authStateFile,
+    PUBLIC_URL: urlFor(config)
   };
 }
 
@@ -327,8 +334,9 @@ function printLogs(follow) {
 async function api(config, pathname, options = {}) {
   let response;
   try {
+    const authorization = `Bearer ${createAuth({ issuerOnly: true, stateFile: authStateFile }).createCliToken()}`;
     response = await fetch(`${urlFor(config)}${pathname}`, {
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', authorization },
       signal: AbortSignal.timeout(5000),
       ...options
     });
@@ -374,6 +382,14 @@ async function main() {
     return;
   }
   if (command === 'logs') { printLogs(options.follow); return; }
+  if (command === 'auth') {
+    const publicUrl = options.url || urlFor(config);
+    const parsed = new URL(publicUrl);
+    if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('the public URL must use http:// or https://');
+    const login = createAuth({ issuerOnly: true, stateFile: authStateFile }).createLoginCredentials(parsed.toString());
+    console.log(`URL:  ${login.url}\nCode: ${login.code}`);
+    return;
+  }
   if (command === 'install-service') {
     await installService(config);
     console.log(`Installed and started the ${process.platform === 'linux' ? 'systemd user' : 'launchd user'} service.\nWaypoint Terminal is running at ${urlFor(config)}`);

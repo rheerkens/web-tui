@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 
 const baseURL = process.env.BASE_URL || 'http://127.0.0.1:4173';
+const loginURL = process.env.LOGIN_URL;
 try { execFileSync('tmux', ['kill-session', '-t', '=waypoint-e2e'], { stdio: 'ignore' }); } catch {}
 execFileSync('tmux', ['new-session', '-d', '-s', 'waypoint-e2e', 'bash']);
 
@@ -11,7 +12,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(baseURL, { waitUntil: 'networkidle' });
+  await page.goto(loginURL || baseURL, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: /waypoint-e2e/ }).click();
   await page.getByText('Live', { exact: true }).waitFor();
   await page.locator('.xterm-helper-textarea').focus();
