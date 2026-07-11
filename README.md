@@ -2,7 +2,7 @@
 
 Waypoint Terminal is a responsive browser UI for persistent AI coding-agent sessions. Each session runs in `tmux`, so it keeps working when the browser disconnects and can be resumed from a phone or another computer.
 
-> **Security warning:** Waypoint provides remote shell access as the user who runs it. It does not include authentication or TLS. Bind it to localhost or put it behind a VPN such as Tailscale, HTTPS, and an authenticated reverse proxy. Never expose port 4173 directly to the public internet.
+> **Security warning:** Waypoint provides remote shell access as the user who runs it. Its built-in login protects access but does not provide TLS. Bind it to localhost or put it behind a VPN such as Tailscale and HTTPS. Never expose unencrypted port 4173 directly to the public internet.
 
 ## Requirements
 
@@ -46,12 +46,26 @@ waypoint logs --follow          # stream logs
 waypoint restart
 waypoint stop
 waypoint start
+waypoint auth                   # new five-minute login URL and code
 waypoint help                   # complete CLI reference
 ```
 
 `waypoint start` runs a detached background process when no service is installed. When a systemd/launchd service exists, it controls that service instead. `waypoint serve` stays in the foreground and is useful for containers and process supervisors.
 
 The service is installed for the current user, starts automatically when that user's service manager starts, and restarts on failure.
+
+### Browser authentication
+
+Waypoint prints a single-use sign-in URL and 12-character code when it starts. Open the URL or navigate to Waypoint and enter the code within five minutes. Using either consumes the credential, so the other cannot be reused. Generate another credential without restarting:
+
+```bash
+waypoint auth
+waypoint auth --url https://waypoint.example
+```
+
+The browser receives an HttpOnly access cookie valid for 15 minutes and a rotating refresh cookie valid for 7 days. Active browsers refresh automatically. Authentication state is stored with owner-only permissions under `$XDG_STATE_HOME/waypoint-terminal/auth.json` (normally `~/.local/state/waypoint-terminal/auth.json`). When launching `server.js` directly, `PUBLIC_URL`, `AUTH_STATE_FILE`, and `AUTH_SECURE_COOKIES` customize the public login URL, state location, and Secure-cookie behavior.
+
+Use HTTPS outside localhost so login credentials and terminal traffic are encrypted.
 
 On a headless Linux host, the user service normally stops when the user fully logs out. If your distribution does not already keep the user manager alive, enable it once with `loginctl enable-linger "$USER"` (administrator policy may require approval).
 
@@ -121,7 +135,7 @@ For direct HTTP integration:
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/health` | Read health, host name, and session command |
-| `GET` | `/api/sessions` | List sessions |
+| `GET` | `/api/sessions` | List sessions (authentication required) |
 | `POST` | `/api/sessions` | Create a session; optional JSON body: `{"name":"task-name"}` |
 | `DELETE` | `/api/sessions/:name` | End a session |
 | WebSocket | `/ws?session=:name` | Attach terminal input/output |
@@ -148,6 +162,8 @@ npm pack --dry-run
 `npm run dev` rebuilds the browser bundle and restarts the server when backend files change. The UI is available at `http://127.0.0.1:4173` by default.
 
 The package includes its compiled browser bundle, so installed machines do not need build tools. Maintainers should run `npm run build` before committing source changes; `npm pack` also rebuilds it through the `prepack` hook.
+
+For the browser end-to-end test, pass a fresh URL as `LOGIN_URL`, for example `LOGIN_URL='http://127.0.0.1:4173/auth/login?token=…' npm run test:e2e`.
 
 ## Publishing
 

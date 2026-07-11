@@ -11,7 +11,8 @@
   },
   "bugs": "https://github.com/rheerkens/web-tui/issues",
   "bin": {
-    "waypoint": "bin/waypoint.js"
+    "waypoint": "bin/waypoint.js",
+    "waypoint-auth": "bin/waypoint-auth.js"
   },
   "files": [
     "bin/",
@@ -26,6 +27,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "auth:link": "node bin/waypoint-auth.js",
     "build": "esbuild src/app.js --bundle --minify --sourcemap --outfile=public/app.js",
     "dev": "npm run build && node --watch server.js",
     "start": "node server.js",

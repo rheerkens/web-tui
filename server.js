@@ -7,6 +7,7 @@ import { execFile, spawn as spawnProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import pty from 'node-pty';
 import { WebSocketServer, WebSocket } from 'ws';
+import { createAuth } from './src/auth.js';
 
 const exec = promisify(execFile);
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -15,6 +16,7 @@ const host = process.env.HOST || '0.0.0.0';
 const tmux = process.env.TMUX_BIN || 'tmux';
 const defaultCommand = process.env.SESSION_COMMAND || 'claude';
 const NAME = /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$/;
+const auth = createAuth();
 
 export async function listSessions() {
   try {
@@ -51,7 +53,12 @@ async function createSession(requestedName) {
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '8kb' }));
+app.use(express.urlencoded({ extended: false, limit: '2kb' }));
 app.get('/api/health', (_req, res) => res.json({ ok: true, host: os.hostname(), command: defaultCommand }));
+app.get('/auth/login', (req, res) => auth.login(req, res));
+app.post('/auth/code', (req, res) => auth.loginWithCode(req, res));
+app.post('/auth/logout', (req, res) => auth.logout(req, res));
+app.use(auth.middleware);
 app.get('/api/sessions', async (_req, res, next) => {
   try { res.json({ sessions: await listSessions() }); } catch (error) { next(error); }
 });
@@ -76,8 +83,16 @@ const wss = new WebSocketServer({ noServer: true });
 
 server.on('upgrade', (request, socket, head) => {
   const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
-  if (url.pathname !== '/ws' || !NAME.test(url.searchParams.get('session') || '')) {
-    socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
+  const origin = request.headers.origin;
+  let originMatches = !origin;
+  try { originMatches ||= new URL(origin).host === request.headers.host; } catch { originMatches = false; }
+  if (url.pathname !== '/ws' || !NAME.test(url.searchParams.get('session') || '') || !originMatches) {
+    socket.write('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+  if (!auth.authenticate(request)) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
     socket.destroy();
     return;
   }
@@ -115,7 +130,13 @@ wss.on('connection', async (ws, request) => {
 });
 
 if (process.env.NODE_ENV !== 'test') {
-  server.listen(port, host, () => console.log(`Waypoint Terminal listening on http://${host}:${port}`));
+  server.listen(port, host, () => {
+    const localUrl = `http://${host}:${port}`;
+    const publicUrl = process.env.PUBLIC_URL || `http://localhost:${port}`;
+    const login = auth.createLoginCredentials(publicUrl);
+    console.log(`Waypoint Terminal listening on ${localUrl}`);
+    console.log(`Temporary sign-in credential (valid once for 5 minutes):\nURL:  ${login.url}\nCode: ${login.code}`);
+  });
 
   const shutdown = () => {
     wss.clients.forEach((client) => client.close(1001, 'Server shutting down'));
@@ -126,4 +147,4 @@ if (process.env.NODE_ENV !== 'test') {
   process.once('SIGINT', shutdown);
 }
 
-export { app, server };
+export { app, server, auth };

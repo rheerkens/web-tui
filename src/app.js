@@ -42,6 +42,10 @@ function showToast(message, kind = '') {
 
 async function api(path, options) {
   const response = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options });
+  if (response.status === 401) {
+    location.reload();
+    throw new Error('Your session has expired.');
+  }
   if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `Request failed (${response.status})`);
   return response.status === 204 ? null : response.json();
 }
